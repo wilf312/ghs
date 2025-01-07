@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "run": "deno run --allow-run --allow-read ghs.ts",
     "compile": "deno compile --allow-run --allow-read --output ghs ghs.ts",
     "addCommand": "sudo mv ghs /usr/local/bin/"
   },
