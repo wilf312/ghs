@@ -69,8 +69,8 @@ async function searchPackageIssues(packageName: string, searchTerm: string) {
 
     // 選択されたissueをブラウザで開く
     if (typeof selectedIssue === 'string') {
-      await new Deno.Command("gh", {
-        args: ["browse", selectedIssue],
+      await new Deno.Command("open", {
+        args: [selectedIssue],
       }).output();
     }
 
