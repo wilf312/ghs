@@ -26,18 +26,25 @@ async function searchPackageIssues(packageName, searchTerm) {
     // 番号で降順ソート
     const sortedIssues = issues.sort((a, b) => b.number - a.number);
 
-    // タイトル、時間、URLの順で表示
-    sortedIssues.forEach(issue => {
-      const createdDate = new Date(issue.createdAt).toLocaleDateString('ja-JP');
-      console.log(
-        `${issue.title.padEnd(50)} ${createdDate.padEnd(15)} ${issue.url}`
-      );
+    // 選択肢のリストを作成
+    const selectedIssue = await select({
+      message: '開きたいissueを選択してください:',
+      choices: sortedIssues.map((issue) => ({
+        name: `${issue.title} (${new Date(issue.createdAt).toLocaleDateString('ja-JP')})`,
+        value: issue.url,
+      })),
+      pageSize: 50,
     });
 
+    console.log(selectedIssue);
+
+    // 選択されたissueをブラウザで開く
+    execSync(`open ${selectedIssue}`);
   } catch (error) {
     console.error(`Error searching issues for ${packageName}:`, error.message);
   }
 }
+
 async function getDependencies() {
   const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
   return {
