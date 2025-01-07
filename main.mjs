@@ -17,26 +17,32 @@ async function searchPackageIssues(packageName, searchTerm) {
       .replace('github.com/', '')
       .replace('.git', '');
 
-    const searchCommand = `gh issue list -R ${orgSlashRepo} --search "${searchTerm}"`;
+    const searchCommand = `gh issue list -R ${orgSlashRepo} --search "${searchTerm}" --json number,title,createdAt,url`;
     console.log(`検索中 issues in ${orgSlashRepo}...\n`);
 
     const result = execSync(searchCommand, { encoding: 'utf8' });
+    const issues = JSON.parse(result);
 
-    if (typeof result === 'string' && result.length === 0) {
-      console.log('検索結果 0件');
-      return;
-    }
-    console.log(result);
+    // 番号で降順ソート
+    const sortedIssues = issues.sort((a, b) => b.number - a.number);
+
+    // タイトル、時間、URLの順で表示
+    sortedIssues.forEach(issue => {
+      const createdDate = new Date(issue.createdAt).toLocaleDateString('ja-JP');
+      console.log(
+        `${issue.title.padEnd(50)} ${createdDate.padEnd(15)} ${issue.url}`
+      );
+    });
+
   } catch (error) {
     console.error(`Error searching issues for ${packageName}:`, error.message);
   }
 }
-
 async function getDependencies() {
   const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
   return {
     ...packageJson.dependencies,
-    ...packageJson.devDependencies
+    ...packageJson.devDependencies,
   };
 }
 
@@ -47,26 +53,23 @@ async function main() {
 
     const selectedPackage = await select({
       message: '検索するパッケージを選択してください:',
-      choices: packageNames.map(name => ({
+      choices: packageNames.map((name) => ({
         name: name,
-        value: name
+        value: name,
       })),
       pageSize: 10,
       loop: true,
       filter: (input) => {
-        return packageNames.filter(name => 
-          name.toLowerCase().includes(input.toLowerCase())
-        );
-      }
+        return packageNames.filter((name) => name.toLowerCase().includes(input.toLowerCase()));
+      },
     });
 
     const issueSearchTerm = await input({
       message: 'Issueの検索キーワードを入力してください:',
-      validate: (value) => value.length > 0 || '検索キーワードを入力してください'
+      validate: (value) => value.length > 0 || '検索キーワードを入力してください',
     });
 
     await searchPackageIssues(selectedPackage, issueSearchTerm);
-
   } catch (error) {
     console.error('エラーが発生しました:', error.message);
     process.exit(1);
