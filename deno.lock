@@ -47,6 +47,7 @@
     "https://deno.land/std@0.208.0/assert/unimplemented.ts": "d56fbeecb1f108331a380f72e3e010a1f161baa6956fd0f7cf3e095ae1a4c75a",
     "https://deno.land/std@0.208.0/assert/unreachable.ts": "4600dc0baf7d9c15a7f7d234f00c23bca8f3eba8b140286aaca7aa998cf9a536",
     "https://deno.land/std@0.208.0/fmt/colors.ts": "34b3f77432925eb72cf0bfb351616949746768620b8e5ead66da532f93d10ba2",
+    "https://deno.land/std@0.208.0/testing/mock.ts": "3f23573411caf1eacd48d62c5f9a606970648a694ce55132c76b0d2365baa03d",
     "https://deno.land/x/cliffy@v1.0.0-rc.3/_utils/distance.ts": "02af166952c7c358ac83beae397aa2fbca4ad630aecfcd38d92edb1ea429f004",
     "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/ansi_escapes.ts": "193b3c3a4e520274bd8322ca4cab1c3ce38070bed1898cb2ade12a585dddd7c9",
     "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/cursor_position.ts": "caa008d29f7a904908bda514f9839bfbb7a93f2d5f5580501675b646d26a87ff",
