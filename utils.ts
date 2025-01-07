@@ -1,4 +1,18 @@
-import type { Issue } from "./types.ts";
+import type { Issue, Release } from "./types.ts";
+
+// リリース情報を取得する関数
+async function getReleases(orgSlashRepo: string): Promise<Release[]> {
+  try {
+    const releaseCommand = new Deno.Command("gh", {
+      args: ["release", "list", "-R", orgSlashRepo, "--json", "tagName,publishedAt"]
+    });
+    
+    const { stdout } = await releaseCommand.output();
+    return JSON.parse(new TextDecoder().decode(stdout));
+  } catch {
+    return [];
+  }
+}
 
 // 相対的な日付を計算する関数
 export function getRelativeTimeString(date: string) {
@@ -46,6 +60,35 @@ export async function GitHubのIssueを検索する(orgSlashRepo: string, search
   const { stdout } = await searchCommand.output();
   const issues = JSON.parse(new TextDecoder().decode(stdout)) as Issue[];
 
+  // リリース情報を取得
+  const releases = await getReleases(orgSlashRepo);
+
+  // 各issueに対応するリリース情報とフラグを追加
+  const issuesWithRelease = issues.map(issue => {
+    // issueの作成日以降の最初のリリースを見つける
+    const nextRelease = releases.find(release => 
+      new Date(release.publishedAt) < new Date(issue.createdAt)
+    );
+    
+    // リリースがない場合は最新のissueとして扱う
+    if (!nextRelease) {
+      return {
+        ...issue,
+        release: nextRelease,
+        isCreatedAfterRelease: true
+      };
+    }
+
+    // issueの作成日とリリース日を比較
+    const isCreatedAfterRelease = new Date(issue.createdAt) > new Date(nextRelease.publishedAt);
+    
+    return {
+      ...issue,
+      release: nextRelease,
+      isCreatedAfterRelease
+    };
+  });
+
   // 番号で降順ソート
-  return issues.sort((a, b) => b.number - a.number);
+  return issuesWithRelease.sort((a, b) => b.number - a.number);
 }

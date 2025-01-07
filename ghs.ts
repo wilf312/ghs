@@ -2,6 +2,37 @@
 
 import { Select, Input } from "cliffy/prompt/mod.ts";
 import { getRelativeTimeString, パッケージ名からGitHubのOrgrepoを取得する, GitHubのIssueを検索する } from "./utils.ts";
+import type { Issue } from "./types.ts";
+
+// issueをリリースバージョンでグループ化する関数
+function groupIssuesByRelease(issues: Issue[]): { version: string; issues: Issue[] }[] {
+  const groups: { version: string; issues: Issue[] }[] = [];
+  let currentGroup: Issue[] = [];
+  let currentVersion: string | undefined;
+
+  for (const issue of issues) {
+    if (issue.release?.tagName !== currentVersion) {
+      if (currentGroup.length > 0) {
+        groups.push({
+          version: currentVersion ?? "未リリース",
+          issues: currentGroup
+        });
+      }
+      currentGroup = [];
+      currentVersion = issue.release?.tagName;
+    }
+    currentGroup.push(issue);
+  }
+
+  if (currentGroup.length > 0) {
+    groups.push({
+      version: currentVersion ?? "未リリース",
+      issues: currentGroup
+    });
+  }
+
+  return groups;
+}
 
 async function searchPackageIssues(packageName: string, searchTerm: string) {
   try {
@@ -9,19 +40,29 @@ async function searchPackageIssues(packageName: string, searchTerm: string) {
     console.log(`検索中 issues in ${orgSlashRepo}...\n`);
     
     const sortedIssues = await GitHubのIssueを検索する(orgSlashRepo, searchTerm);
+    const groupedIssues = groupIssuesByRelease(sortedIssues);
 
-    // 選択肢のリストを作成（相対日付を使用）
-    const selectedIssue = await Select.prompt({
-      message: '開きたいissueを選択してください:',
-      options: sortedIssues.map((issue) => ({
-        name: `${issue.title} (${getRelativeTimeString(issue.createdAt)})`,
+    // 選択肢のリストを作成
+    const options = groupedIssues.flatMap(group => [
+      {
+        name: group.version,
+        value: "",
+        disabled: true
+      },
+      ...group.issues.map(issue => ({
+        name: `  ${issue.title} (${getRelativeTimeString(issue.createdAt)})`,
         value: issue.url
-      })),
+      }))
+    ]);
+
+    const selectedIssue = await Select.prompt<string>({
+      message: '開きたいissueを選択してください:',
+      options,
       maxRows: 30,
     });
 
     // 選択されたissueをブラウザで開く
-    if (typeof selectedIssue === 'string') {
+    if (selectedIssue && selectedIssue !== "") {
       await new Deno.Command("open", {
         args: [selectedIssue],
       }).output();
