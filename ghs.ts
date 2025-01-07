@@ -64,6 +64,7 @@ async function searchPackageIssues(packageName: string, searchTerm: string) {
         name: `${issue.title} (${getRelativeTimeString(issue.createdAt)})`,
         value: issue.url
       })),
+      maxRows: 30,
     });
 
     // 選択されたissueをブラウザで開く
@@ -101,7 +102,8 @@ async function main() {
         name,
         value: name
       })),
-      search: true
+      search: true,
+      maxRows: 30,
     });
 
     const issueSearchTerm = await Input.prompt({
