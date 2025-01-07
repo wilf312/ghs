@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "deno compile --allow-run --allow-read --output ghs ghs.ts",
+    "addCommand": "sudo mv ghs /usr/local/bin/"
   },
   "keywords": [],
   "author": "",

@@ -22,14 +22,20 @@ function getRelativeTimeString(date: string) {
   return `${seconds}秒前`;
 }
 
+interface Issue {
+  number: number;
+  title: string;
+  createdAt: string;
+  url: string;
+}
+
 async function searchPackageIssues(packageName: string, searchTerm: string) {
   try {
-    const repoInfo = new TextDecoder().decode(
-      await Deno.run({
-        cmd: ["npm", "view", packageName, "repository.url"],
-        stdout: "piped"
-      }).output()
-    );
+    const npmCommand = new Deno.Command("npm", {
+      args: ["view", packageName, "repository.url"],
+    });
+    const { stdout: npmStdout } = await npmCommand.output();
+    const repoInfo = new TextDecoder().decode(npmStdout);
 
     const orgSlashRepo = repoInfo
       .trim()
@@ -46,27 +52,33 @@ async function searchPackageIssues(packageName: string, searchTerm: string) {
     console.log(`検索中 issues in ${orgSlashRepo}...\n`);
 
     const { stdout } = await searchCommand.output();
-    const issues = JSON.parse(new TextDecoder().decode(stdout));
+    const issues = JSON.parse(new TextDecoder().decode(stdout)) as Issue[];
 
     // 番号で降順ソート
-    const sortedIssues = issues.sort((a: any, b: any) => b.number - a.number);
+    const sortedIssues = issues.sort((a, b) => b.number - a.number);
 
     // 選択肢のリストを作成（相対日付を使用）
     const selectedIssue = await Select.prompt({
       message: '開きたいissueを選択してください:',
-      options: sortedIssues.map((issue: any) => ({
+      options: sortedIssues.map((issue) => ({
         name: `${issue.title} (${getRelativeTimeString(issue.createdAt)})`,
         value: issue.url
       })),
     });
 
     // 選択されたissueをブラウザで開く
-    await new Deno.Command("gh", {
-      args: ["browse", selectedIssue],
-    }).output();
+    if (typeof selectedIssue === 'string') {
+      await new Deno.Command("gh", {
+        args: ["browse", selectedIssue],
+      }).output();
+    }
 
   } catch (error) {
-    console.error(`Error searching issues for ${packageName}:`, error.message);
+    if (error instanceof Error) {
+      console.error(`Error searching issues for ${packageName}:`, error.message);
+    } else {
+      console.error(`Error searching issues for ${packageName}:`, String(error));
+    }
   }
 }
 
@@ -97,10 +109,16 @@ async function main() {
       validate: (value) => value.length > 0 || '検索キーワードを入力してください'
     });
 
-    await searchPackageIssues(selectedPackage, issueSearchTerm);
+    if (typeof selectedPackage === 'string' && typeof issueSearchTerm === 'string') {
+      await searchPackageIssues(selectedPackage, issueSearchTerm);
+    }
 
   } catch (error) {
-    console.error('エラーが発生しました:', error.message);
+    if (error instanceof Error) {
+      console.error('エラーが発生しました:', error.message);
+    } else {
+      console.error('エラーが発生しました:', String(error));
+    }
     Deno.exit(1);
   }
 }
