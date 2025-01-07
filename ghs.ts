@@ -1,11 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S deno run --allow-run --allow-read
 
-import { execSync } from 'node:child_process';
-import { select, input } from '@inquirer/prompts';
-import { readFileSync } from 'node:fs';
+import { Select, Input } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
 
 // 相対的な日付を計算する関数
-function getRelativeTimeString(date) {
+function getRelativeTimeString(date: string) {
   const now = new Date();
   const diff = now.getTime() - new Date(date).getTime();
   
@@ -24,10 +22,14 @@ function getRelativeTimeString(date) {
   return `${seconds}秒前`;
 }
 
-async function searchPackageIssues(packageName, searchTerm) {
+async function searchPackageIssues(packageName: string, searchTerm: string) {
   try {
-    const repoInfo = execSync(`npm view ${packageName} repository.url`, { encoding: 'utf8' });
-    console.log(repoInfo);
+    const repoInfo = new TextDecoder().decode(
+      await Deno.run({
+        cmd: ["npm", "view", packageName, "repository.url"],
+        stdout: "piped"
+      }).output()
+    );
 
     const orgSlashRepo = repoInfo
       .trim()
@@ -37,27 +39,31 @@ async function searchPackageIssues(packageName, searchTerm) {
       .replace('github.com/', '')
       .replace('.git', '');
 
-    const searchCommand = `gh issue list -R ${orgSlashRepo} --search "${searchTerm}" --json number,title,createdAt,url`;
+    const searchCommand = new Deno.Command("gh", {
+      args: ["issue", "list", "-R", orgSlashRepo, "--search", searchTerm, "--json", "number,title,createdAt,url"]
+    });
+    
     console.log(`検索中 issues in ${orgSlashRepo}...\n`);
 
-    const result = execSync(searchCommand, { encoding: 'utf8' });
-    const issues = JSON.parse(result);
+    const { stdout } = await searchCommand.output();
+    const issues = JSON.parse(new TextDecoder().decode(stdout));
 
     // 番号で降順ソート
-    const sortedIssues = issues.sort((a, b) => b.number - a.number);
+    const sortedIssues = issues.sort((a: any, b: any) => b.number - a.number);
 
     // 選択肢のリストを作成（相対日付を使用）
-    const selectedIssue = await select({
+    const selectedIssue = await Select.prompt({
       message: '開きたいissueを選択してください:',
-      choices: sortedIssues.map(issue => ({
+      options: sortedIssues.map((issue: any) => ({
         name: `${issue.title} (${getRelativeTimeString(issue.createdAt)})`,
         value: issue.url
       })),
-      pageSize: 50
     });
 
     // 選択されたissueをブラウザで開く
-    execSync(`open ${selectedIssue}`);
+    await new Deno.Command("gh", {
+      args: ["browse", selectedIssue],
+    }).output();
 
   } catch (error) {
     console.error(`Error searching issues for ${packageName}:`, error.message);
@@ -65,10 +71,10 @@ async function searchPackageIssues(packageName, searchTerm) {
 }
 
 async function getDependencies() {
-  const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
+  const packageJson = JSON.parse(await Deno.readTextFile("./package.json"));
   return {
     ...packageJson.dependencies,
-    ...packageJson.devDependencies,
+    ...packageJson.devDependencies
   };
 }
 
@@ -77,29 +83,28 @@ async function main() {
     const dependencies = await getDependencies();
     const packageNames = Object.keys(dependencies);
 
-    const selectedPackage = await select({
+    const selectedPackage = await Select.prompt({
       message: '検索するパッケージを選択してください:',
-      choices: packageNames.map((name) => ({
-        name: name,
-        value: name,
+      options: packageNames.map(name => ({
+        name,
+        value: name
       })),
-      pageSize: 10,
-      loop: true,
-      filter: (input) => {
-        return packageNames.filter((name) => name.toLowerCase().includes(input.toLowerCase()));
-      },
+      search: true
     });
 
-    const issueSearchTerm = await input({
+    const issueSearchTerm = await Input.prompt({
       message: 'Issueの検索キーワードを入力してください:',
-      validate: (value) => value.length > 0 || '検索キーワードを入力してください',
+      validate: (value) => value.length > 0 || '検索キーワードを入力してください'
     });
 
     await searchPackageIssues(selectedPackage, issueSearchTerm);
+
   } catch (error) {
     console.error('エラーが発生しました:', error.message);
-    process.exit(1);
+    Deno.exit(1);
   }
 }
 
-main();
+if (import.meta.main) {
+  main();
+}
