@@ -8,5 +8,9 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@inquirer/prompts": "^7.2.1",
+    "inquirer-autocomplete-prompt": "^3.0.1"
+  }
 }
