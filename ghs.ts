@@ -1,42 +1,14 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read
 
-import { Select, Input } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
-import { getRelativeTimeString } from "./utils.ts";
-
-interface Issue {
-  number: number;
-  title: string;
-  createdAt: string;
-  url: string;
-}
+import { Select, Input } from "cliffy/prompt/mod.ts";
+import { getRelativeTimeString, パッケージ名からGitHubのOrgrepoを取得する, GitHubのIssueを検索する } from "./utils.ts";
 
 async function searchPackageIssues(packageName: string, searchTerm: string) {
   try {
-    const npmCommand = new Deno.Command("npm", {
-      args: ["view", packageName, "repository.url"],
-    });
-    const { stdout: npmStdout } = await npmCommand.output();
-    const repoInfo = new TextDecoder().decode(npmStdout);
-
-    const orgSlashRepo = repoInfo
-      .trim()
-      .replace('git+', '')
-      .replace('git://', '')
-      .replace('https://', '')
-      .replace('github.com/', '')
-      .replace('.git', '');
-
-    const searchCommand = new Deno.Command("gh", {
-      args: ["issue", "list", "-R", orgSlashRepo, "--search", searchTerm, "--json", "number,title,createdAt,url"]
-    });
-    
+    const orgSlashRepo = await パッケージ名からGitHubのOrgrepoを取得する(packageName);
     console.log(`検索中 issues in ${orgSlashRepo}...\n`);
-
-    const { stdout } = await searchCommand.output();
-    const issues = JSON.parse(new TextDecoder().decode(stdout)) as Issue[];
-
-    // 番号で降順ソート
-    const sortedIssues = issues.sort((a, b) => b.number - a.number);
+    
+    const sortedIssues = await GitHubのIssueを検索する(orgSlashRepo, searchTerm);
 
     // 選択肢のリストを作成（相対日付を使用）
     const selectedIssue = await Select.prompt({
@@ -89,7 +61,7 @@ async function main() {
 
     const issueSearchTerm = await Input.prompt({
       message: 'Issueの検索キーワードを入力してください:',
-      validate: (value) => value.length > 0 || '検索キーワードを入力してください'
+      validate: (value: string) => value.length > 0 || '検索キーワードを入力してください'
     });
 
     if (typeof selectedPackage === 'string' && typeof issueSearchTerm === 'string') {

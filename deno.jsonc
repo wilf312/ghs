@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "imports": {
+    "cliffy/": "https://deno.land/x/cliffy@v1.0.0-rc.3/"
+  },
+  "tasks": {
+    "dev": "deno run --allow-run --allow-read ghs.ts"
+  }
+}
