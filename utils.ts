@@ -1,4 +1,4 @@
-import type { Issue, Release } from "./types.ts";
+import type { Issue, Release, Tag, VersionInfo } from "./types.ts";
 
 // リリース情報を取得する関数
 async function getReleases(orgSlashRepo: string): Promise<Release[]> {
@@ -12,6 +12,63 @@ async function getReleases(orgSlashRepo: string): Promise<Release[]> {
   } catch {
     return [];
   }
+}
+
+// タグ情報を取得する関数
+async function getTags(orgSlashRepo: string): Promise<Tag[]> {
+  try {
+    const tagsCommand = new Deno.Command("gh", {
+      args: ["api", `repos/${orgSlashRepo}/tags`]
+    });
+    
+    const { stdout } = await tagsCommand.output();
+    const tags = JSON.parse(new TextDecoder().decode(stdout));
+    
+    // タグの詳細情報（コミット日時）を取得
+    const tagDetails = await Promise.all(tags.map(async (tag: { name: string; commit: { sha: string } }) => {
+      const commitCommand = new Deno.Command("gh", {
+        args: ["api", `repos/${orgSlashRepo}/commits/${tag.commit.sha}`]
+      });
+      
+      const { stdout } = await commitCommand.output();
+      const commit = JSON.parse(new TextDecoder().decode(stdout));
+      
+      return {
+        name: tag.name,
+        publishedAt: commit.commit.author.date
+      };
+    }));
+    
+    return tagDetails;
+  } catch {
+    return [];
+  }
+}
+
+// バージョン情報を組み合わせて取得する関数
+async function getVersions(orgSlashRepo: string): Promise<VersionInfo[]> {
+  const [releases, tags] = await Promise.all([
+    getReleases(orgSlashRepo),
+    getTags(orgSlashRepo)
+  ]);
+
+  const versions: VersionInfo[] = [
+    ...releases.map(release => ({
+      name: release.tagName,
+      publishedAt: release.publishedAt,
+      type: 'release' as const
+    })),
+    ...tags.map(tag => ({
+      name: tag.name,
+      publishedAt: tag.publishedAt,
+      type: 'tag' as const
+    }))
+  ];
+
+  // 日付でソート
+  return versions.sort((a, b) => 
+    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  );
 }
 
 // 相対的な日付を計算する関数
@@ -60,35 +117,37 @@ export async function GitHubのIssueを検索する(orgSlashRepo: string, search
   const { stdout } = await searchCommand.output();
   const issues = JSON.parse(new TextDecoder().decode(stdout)) as Issue[];
 
-  // リリース情報を取得
-  const releases = await getReleases(orgSlashRepo);
+  console.log(issues)
 
-  // 各issueに対応するリリース情報とフラグを追加
-  const issuesWithRelease = issues.map(issue => {
-    // issueの作成日以降の最初のリリースを見つける
-    const nextRelease = releases.find(release => 
-      new Date(release.publishedAt) < new Date(issue.createdAt)
+  // バージョン情報を取得
+  const versions = await getVersions(orgSlashRepo);
+
+  // 各issueに対応するバージョン情報とフラグを追加
+  const issuesWithVersion = issues.map(issue => {
+    // issueの作成日以降の最初のバージョンを見つける
+    const nextVersion = versions.find(version => 
+      new Date(version.publishedAt) < new Date(issue.createdAt)
     );
     
-    // リリースがない場合は最新のissueとして扱う
-    if (!nextRelease) {
+    // バージョンがない場合は最新のissueとして扱う
+    if (!nextVersion) {
       return {
         ...issue,
-        release: nextRelease,
-        isCreatedAfterRelease: true
+        version: nextVersion,
+        isCreatedAfterVersion: true
       };
     }
 
-    // issueの作成日とリリース日を比較
-    const isCreatedAfterRelease = new Date(issue.createdAt) > new Date(nextRelease.publishedAt);
+    // issueの作成日とバージョン日を比較
+    const isCreatedAfterVersion = new Date(issue.createdAt) > new Date(nextVersion.publishedAt);
     
     return {
       ...issue,
-      release: nextRelease,
-      isCreatedAfterRelease
+      version: nextVersion,
+      isCreatedAfterVersion
     };
   });
 
   // 番号で降順ソート
-  return issuesWithRelease.sort((a, b) => b.number - a.number);
+  return issuesWithVersion.sort((a, b) => b.number - a.number);
 }

@@ -6,6 +6,7 @@
   "scripts": {
     "test": "deno test",
     "run": "deno run --allow-run --allow-read ghs.ts",
+    "addCli": "npm run compile && npm run addCommand",
     "compile": "deno compile --allow-run --allow-read --output ghs ghs.ts",
     "addCommand": "sudo mv ghs /usr/local/bin/"
   },

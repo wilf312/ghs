@@ -3,11 +3,22 @@ export interface Release {
   publishedAt: string;
 }
 
+export interface Tag {
+  name: string;
+  publishedAt: string;
+}
+
+export interface VersionInfo {
+  name: string;
+  publishedAt: string;
+  type: 'release' | 'tag';
+}
+
 export interface Issue {
   number: number;
   title: string;
   createdAt: string;
   url: string;
-  release?: Release;
-  isCreatedAfterRelease?: boolean;
+  version?: VersionInfo;
+  isCreatedAfterVersion?: boolean;
 }

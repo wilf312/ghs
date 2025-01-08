@@ -4,22 +4,25 @@ import { Select, Input } from "cliffy/prompt/mod.ts";
 import { getRelativeTimeString, パッケージ名からGitHubのOrgrepoを取得する, GitHubのIssueを検索する } from "./utils.ts";
 import type { Issue } from "./types.ts";
 
-// issueをリリースバージョンでグループ化する関数
-function groupIssuesByRelease(issues: Issue[]): { version: string; issues: Issue[] }[] {
-  const groups: { version: string; issues: Issue[] }[] = [];
+// issueをバージョンでグループ化する関数
+function groupIssuesByVersion(issues: Issue[]): { version: string; type: string; issues: Issue[] }[] {
+  const groups: { version: string; type: string; issues: Issue[] }[] = [];
   let currentGroup: Issue[] = [];
   let currentVersion: string | undefined;
+  let currentType: string | undefined;
 
   for (const issue of issues) {
-    if (issue.release?.tagName !== currentVersion) {
+    if (issue.version?.name !== currentVersion || issue.version?.type !== currentType) {
       if (currentGroup.length > 0) {
         groups.push({
           version: currentVersion ?? "未リリース",
+          type: currentType ?? "",
           issues: currentGroup
         });
       }
       currentGroup = [];
-      currentVersion = issue.release?.tagName;
+      currentVersion = issue.version?.name;
+      currentType = issue.version?.type;
     }
     currentGroup.push(issue);
   }
@@ -27,6 +30,7 @@ function groupIssuesByRelease(issues: Issue[]): { version: string; issues: Issue
   if (currentGroup.length > 0) {
     groups.push({
       version: currentVersion ?? "未リリース",
+      type: currentType ?? "",
       issues: currentGroup
     });
   }
@@ -40,12 +44,12 @@ async function searchPackageIssues(packageName: string, searchTerm: string) {
     console.log(`検索中 issues in ${orgSlashRepo}...\n`);
     
     const sortedIssues = await GitHubのIssueを検索する(orgSlashRepo, searchTerm);
-    const groupedIssues = groupIssuesByRelease(sortedIssues);
+    const groupedIssues = groupIssuesByVersion(sortedIssues);
 
     // 選択肢のリストを作成
     const options = groupedIssues.flatMap(group => [
       {
-        name: group.version,
+        name: `${group.version}${group.type ? ` (${group.type})` : ''} ${group.issues[0]?.version?.publishedAt ? `- ${getRelativeTimeString(group.issues[0].version.publishedAt)}` : ''}`,
         value: "",
         disabled: true
       },
