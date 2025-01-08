@@ -47,21 +47,36 @@ Deno.test("GitHubのIssueを検索する", async (t) => {
     ];
 
     // Denoのコマンド実行をスタブ化
-    const commandStub = stub(Deno, "Command", () => ({
-      output: () => Promise.resolve({
-        stdout: new TextEncoder().encode(JSON.stringify(mockIssues))
-      })
-    }));
+    const issueCommandStub = stub(
+      Deno,
+      "Command",
+      (_command: unknown, options: unknown) => {
+        const opts = options as { args: string[] };
+        if (opts.args.includes("issue")) {
+          return {
+            output: () => Promise.resolve({
+              stdout: new TextEncoder().encode(JSON.stringify(mockIssues))
+            })
+          };
+        }
+        // releases と tags のコマンドに対しては空配列を返す
+        return {
+          output: () => Promise.resolve({
+            stdout: new TextEncoder().encode("[]")
+          })
+        };
+      }
+    );
 
     try {
       const result = await GitHubのIssueを検索する("owner/repo", "test");
       assertEquals(result, [
-        { number: 3, title: "Issue 3", createdAt: "2023-01-03", url: "url3" },
-        { number: 2, title: "Issue 2", createdAt: "2023-01-02", url: "url2" },
-        { number: 1, title: "Issue 1", createdAt: "2023-01-01", url: "url1" }
+        { number: 3, title: "Issue 3", createdAt: "2023-01-03", url: "url3", version: undefined, isCreatedAfterVersion: true },
+        { number: 2, title: "Issue 2", createdAt: "2023-01-02", url: "url2", version: undefined, isCreatedAfterVersion: true },
+        { number: 1, title: "Issue 1", createdAt: "2023-01-01", url: "url1", version: undefined, isCreatedAfterVersion: true }
       ]);
     } finally {
-      commandStub.restore();
+      issueCommandStub.restore();
     }
   });
 
