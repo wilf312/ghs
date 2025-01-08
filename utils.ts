@@ -110,8 +110,9 @@ export async function パッケージ名からGitHubのOrgrepoを取得する(pa
 
 // GitHubのissueを検索する関数
 export async function GitHubのIssueを検索する(orgSlashRepo: string, searchTerm: string): Promise<Issue[]> {
+  const search = searchTerm ? ["--search", searchTerm] : [];
   const searchCommand = new Deno.Command("gh", {
-    args: ["issue", "list", "-R", orgSlashRepo, "--search", searchTerm, "--json", "number,title,createdAt,url"]
+    args: ["issue", "list", "-R", orgSlashRepo, ...search, "--json", "number,title,createdAt,url", "--limit", "200"]
   });
   
   const { stdout } = await searchCommand.output();

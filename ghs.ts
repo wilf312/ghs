@@ -106,7 +106,6 @@ async function main() {
 
     const issueSearchTerm = await Input.prompt({
       message: 'Issueの検索キーワードを入力してください:',
-      validate: (value: string) => value.length > 0 || '検索キーワードを入力してください'
     });
 
     if (typeof selectedPackage === 'string' && typeof issueSearchTerm === 'string') {
