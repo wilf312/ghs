@@ -117,8 +117,6 @@ export async function GitHubのIssueを検索する(orgSlashRepo: string, search
   const { stdout } = await searchCommand.output();
   const issues = JSON.parse(new TextDecoder().decode(stdout)) as Issue[];
 
-  console.log(issues)
-
   // バージョン情報を取得
   const versions = await getVersions(orgSlashRepo);
 
