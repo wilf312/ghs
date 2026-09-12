@@ -14,7 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@inquirer/prompts": "^7.2.1",
+    "@inquirer/prompts": "^8.0.0",
     "inquirer-autocomplete-prompt": "^3.0.1"
   }
 }
